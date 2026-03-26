@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>파일명: gemini.html</title>
+</head>
+<body>
+
+	<h2>실시간 AI 채팅</h2>
+	
+	<input type="text" id="msgInput"
+			placeholder="질문을 입력하세요"
+			size="50"/>
+	<button onclick="sendMsg()">전송</button>
+	
+	<hr/>
+	<div id="result"></div>
+
+	<script>
+		function sendMsg(){
+			// 1. 태그 값 가져오기
+			const input = document.getElementById('msgInput');
+			const result = document.getElementById('result');
+			const msg = input.value.trim();
+			
+			if(!msg) return; //만약 값이 없으면 종료!
+			
+			//2. 내 질문 출력!
+			result.innerHTML += `<p>나: ${msg}</p>`;
+			input.value='';
+			
+			//3. Ai 답변 영역을 미리 생성
+			//  여기에 한 글자씩 추가하는 것!
+			const aiP = document.createElement('p');
+			aiP.innerHTML = '<b>AI:</b> <span id="aiText"></span>';
+			result.appendChild(aiP);
+			
+			const aiText = document.getElementById('aiText');
+			
+			//4.SSE 연결
+			//  서버에서 글자를 실시간으로 받기 
+			//  SSE를 사용하는 브라우저 따로 라이브러리를 다운하지 않음
+			//  new EventSource(url)
+			//   - 브라우저가 GET요청을 열고 유지한다.(끊지 않음)
+			const eventSource =  new EventSource(
+					`/stream?msg=${encodeURIComponent(msg)}`
+			);
+			
+			//5. 글자가 올 때마다 실행! 
+			//   - onmessage
+			//     서버가 SSE로 한 조각(event)이 도착할 때마다 실행된다
+			
+			
+			eventSource.onmessage = (e) =>{
+				//aiP.innerHTML += e.data; //글자 하나씩 붙이기
+				console.log(e.data);
+				
+				//타이핑 효과 함수를 직접 만든다!
+				typeText(aiText,e.data);
+			}
+			//6. 스트리밍 완료 -> 연결 종료!
+			// onerror 스트리밍이 끝나면 자동으로 onerror가 호출된다
+			// 그러면 연결을 끊는다!
+			eventSource.onerror = () =>{
+				eventSource.close();
+			}
+			
+			
+		}
+		/*  0.03 마다 출력!  */
+		function typeText(el,text){
+			let i = 0;
+			
+			const timer = setInterval(()=>{
+				if(i < text.length){
+					el.innerText += text[i]; //한 글자씩 추가
+					i++;
+				}else{
+					/* 다 출력하면 반복되는 인터벌끄기!  */
+					clearInterval(timer);
+				}	
+			},50);
+		}
+	
+	</script>
+
+	<br><br><br>
+	<h2>Temperature?</h2>
+	<ul>
+		<li>답변의 종류를 조절하는 숫자 값!!</li>
+		<li>0.0  - 항상 같은 답변 (번역,코드 생성,레시피)</li>
+		<li>1.0  - 자연스러운 답변 (일반 대화,챗봇))</li>
+		<li>2.0  - 창의적이고 자유로운 답변 (광고 카피,창작!)</li>
+		
+	</ul>
+</body>
+</html>
